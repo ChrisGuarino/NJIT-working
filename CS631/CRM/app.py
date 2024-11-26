@@ -1,5 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
+from models import db, Customer, Car, Sale, ServiceAppointment, ServiceRendered
+
 
 app = Flask(__name__)
 
@@ -7,8 +9,12 @@ app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://username:password@localhost/car_dealership'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Initialize SQLAlchemy
-db = SQLAlchemy(app)
+# Initialize the database
+db.init_app(app)
+
+# Create tables
+with app.app_context():
+    db.create_all()
 
 # Home route
 @app.route('/')
@@ -25,8 +31,12 @@ def add_sale():
     sold_price = data.get('sold_price')
     sale_date = data.get('sale_date')
 
-    # Add logic to save to the database (coming soon)
-    return jsonify({"message": "Car sale added successfully", "data": data}), 201
+    # Create a new sale
+    sale = Sale(car_id=car_id, customer_id=customer_id, sold_price=sold_price, sale_date=sale_date)
+    db.session.add(sale)
+    db.session.commit()
+
+    return jsonify({"message": "Sale added successfully", "sale_id": sale.id}), 201
 
 # Schedule a service appointment
 @app.route('/services', methods=['POST'])
@@ -37,8 +47,13 @@ def schedule_service():
     appointment_date = data.get('appointment_date')
     estimated_time = data.get('estimated_time')
 
-    # Add logic to save to the database (coming soon)
-    return jsonify({"message": "Service scheduled successfully", "data": data}), 201
+    # Create a new service appointment
+    service = ServiceAppointment(car_id=car_id, customer_id=customer_id,
+                                  appointment_date=appointment_date, estimated_time=estimated_time)
+    db.session.add(service)
+    db.session.commit()
+
+    return jsonify({"message": "Service scheduled successfully", "appointment_id": service.id}), 201
 
 # Retrieve sales statistics
 @app.route('/sales/stats', methods=['GET'])
@@ -46,8 +61,18 @@ def sales_stats():
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
 
-    # Add logic to query the database for statistics (coming soon)
-    return jsonify({"message": "Sales stats retrieved", "start_date": start_date, "end_date": end_date})
+    # Query sales within the date range
+    stats = db.session.query(
+        Car.make, Car.model, Car.year, db.func.count(Sale.id), db.func.sum(Sale.sold_price)
+    ).join(Sale).filter(Sale.sale_date.between(start_date, end_date)).group_by(Car.make, Car.model, Car.year).all()
+
+    # Format the result
+    results = [
+        {"make": stat[0], "model": stat[1], "year": stat[2], "count": stat[3], "total_sales": stat[4]}
+        for stat in stats
+    ]
+
+    return jsonify({"sales_statistics": results})
 
 # List all cars
 @app.route('/cars', methods=['GET'])

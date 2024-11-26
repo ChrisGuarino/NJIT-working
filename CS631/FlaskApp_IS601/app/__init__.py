@@ -3,10 +3,10 @@ from flaskext.mysql import MySQL
 from pymysql.cursors import DictCursor
 
 mysql = MySQL(cursorclass = DictCursor)
-app = Flask(__name__)
 __all__ = ['init_app']
 
 def init_app():
+    app = Flask(__name__)
 
     #Initialize the Core Application
     app.config.from_object('config.Config')
