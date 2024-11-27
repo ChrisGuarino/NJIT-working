@@ -13,7 +13,7 @@ class Customer(db.Model):
 
 # Car model
 class Car(db.Model):
-    __tablename__ = 'cars'
+    __tablename__ = 'carsZ'
     id = db.Column(db.Integer, primary_key=True)
     make = db.Column(db.String(50), nullable=False)
     model = db.Column(db.String(50), nullable=False)
